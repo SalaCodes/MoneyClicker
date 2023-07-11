@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Console game</title>
+  <style>
+    body {
+      background: black;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      height: 100vh;
+      margin: 0;
+    }
+
+    #moneyButton, .upgradeButton, #shopButton {
+      font-size: 20px;
+      padding: 10px 20px;
+    }
+
+    #box {
+      font-size: 24px;
+      padding: 20px;
+    }
+
+    #message {
+      font-size: 18px;
+      margin-top: 10px;
+      color: white;
+    }
+
+    .upgradeButton {
+      display: none;
+    }
+
+    .shop-open .upgradeButton {
+      display: inline-block;
+    }
+
+    .button-container {
+      display: flex;
+      justify-content: space-between;
+      flex-direction: column;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    #levelBarContainer {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      color: white;
+    }
+
+    #levelText {
+      font-size: 18px;
+      margin-bottom: 5px;
+    }
+
+    #levelBar {
+      width: 100px;
+      height: 10px;
+      background-color: gray;
+    }
+
+    #levelProgress {
+      height: 100%;
+      background-color: green;
+    }
+  </style>
+</head>
+<body>
+  <div class="button-container">
+    <button class="upgradeButton">Fake Billionaire (Cost: 10)</button>
+    <button class="upgradeButton">Money Monkey Maker (Cost: 20)</button>
+    <button class="upgradeButton">Lucky Leprechaun (Cost: 30)</button>
+    <button class="upgradeButton">Crazy Cash Cow (Cost: 100)</button>
+    <button id="shopButton">Shop</button>
+    <button id="moneyButton">Money</button>
+  </div>
+  <div id="message"></div>
+  <div id="levelBarContainer">
+    <div id="levelText">Level: 1</div>
+    <div id="levelBar">
+      <div id="levelProgress"></div>
+    </div>
+  </div>
+
+  <script>
+    // Get references to the buttons and message
+    const shopButton = document.getElementById("shopButton");
+    const moneyButton = document.getElementById("moneyButton");
+    const upgradeButtons = document.getElementsByClassName("upgradeButton");
+    const message = document.getElementById("message");
+    const levelText = document.getElementById("levelText");
+    const levelProgress = document.getElementById("levelProgress");
+
+    // Set the initial values
+    let money = 0;
+    let score = 1;
+    let upgrades = [
+      { name: "Fake Billionaire", cost: 10, increment: 1 },
+      { name: "Money Monkey Maker", cost: 20, increment: 2 },
+      { name: "Lucky Leprechaun", cost: 30, increment: 1 },
+      { name: "Crazy Cash Cow", cost: 100, boostDuration: 60, boostMultiplier: 5 }
+    ];
+    let moneyButtonCooldown = false;
+    let level = 1;
+    let experience = 0;
+    let levelThreshold = 100;
+    let cashCowBoostActive = false;
+
+    // Function to update the money display
+    function updateMoneyDisplay() {
+      message.innerText = `Money: ${money}`;
+    }
+
+    // Function to update the upgrade button texts
+    function updateUpgradeButtonText() {
+      for (let i = 0; i < upgradeButtons.length; i++) {
+        const upgrade = upgrades[i];
+        upgradeButtons[i].innerText = `${upgrade.name} (Cost: ${upgrade.cost})`;
+      }
+    }
+
+    // Function to update the level display
+    function updateLevelDisplay() {
+      levelText.innerText = `Level: ${level}`;
+      levelProgress.style.width = `${(experience / levelThreshold) * 100}%`;
+    }
+
+    // Function to gain experience points
+    function gainExperience(amount) {
+      experience += amount;
+      if (experience >= levelThreshold) {
+        level++;
+        experience -= levelThreshold;
+        levelThreshold += 50;
+        message.innerText = `Level up! You reached Level ${level}!`;
+        updateLevelDisplay();
+      }
+    }
+
+    // Function to apply an upgrade
+    function applyUpgrade(index) {
+      const upgrade = upgrades[index];
+      if (money >= upgrade.cost) {
+        if (upgrade.name === "Crazy Cash Cow" && !cashCowBoostActive) {
+          money -= upgrade.cost;
+          message.innerText = `Upgrade purchased: ${upgrade.name}. Cash Cow boost activated!`;
+          cashCowBoostActive = true;
+          score *= upgrade.boostMultiplier;
+          setTimeout(() => {
+            cashCowBoostActive = false;
+            score /= upgrade.boostMultiplier;
+            message.innerText = `Cash Cow boost expired.`;
+          }, upgrade.boostDuration * 1000);
+        } else {
+          score += upgrade.increment;
+          money -= upgrade.cost;
+          upgrade.cost *= 2;
+          message.innerText = `Upgrade purchased: ${upgrade.name}. Increment increased to ${score}. Upgrade cost: ${upgrade.cost}`;
+        }
+        updateMoneyDisplay();
+        updateUpgradeButtonText();
+        updateLevelDisplay();
+      } else {
+        message.innerText = "Insufficient funds to purchase the upgrade.";
+      }
+    }
+
+    // Add an event listener to the shop button
+    shopButton.addEventListener("click", () => {
+      const isShopOpen = shopButton.classList.toggle("shop-open");
+      moneyButton.disabled = isShopOpen;
+      moneyButton.style.display = isShopOpen ? "none" : "inline-block";
+      for (const button of upgradeButtons) {
+        button.disabled = !isShopOpen;
+        button.style.display = isShopOpen ? "inline-block" : "none";
+      }
+    });
+
+    // Add an event listener to the money button
+    moneyButton.addEventListener("click", () => {
+      if (!moneyButtonCooldown) {
+        money += score;
+        gainExperience(0.5); // Gain 0.5 experience when receiving money
+        updateMoneyDisplay();
+        moneyButtonCooldown = true;
+        moneyButton.disabled = true;
+        setTimeout(() => {
+          moneyButtonCooldown = false;
+          moneyButton.disabled = false;
+        }, 1000);
+      }
+    });
+
+    // Add event listeners to the upgrade buttons
+    for (let i = 0; i < upgradeButtons.length; i++) {
+      upgradeButtons[i].addEventListener("click", () => {
+        applyUpgrade(i);
+      });
+    }
+
+    // Update the initial displays
+    updateMoneyDisplay();
+    updateUpgradeButtonText();
+    updateLevelDisplay();
+  </script>
+</body>
+</html>
